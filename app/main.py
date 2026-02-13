@@ -8,6 +8,7 @@ app = FastAPI(title="CI/CD Pipeline Demo")
 def health():
     return {"status": "ok"}
 
+
 @app.get("/version")
 def version():
     return {"git_sha": os.getenv("GIT_SHA", "dev")}
