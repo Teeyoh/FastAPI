@@ -1,46 +1,46 @@
 pipeline {
   agent any
 
-  options {
-    timestamps()
+  options { timestamps() }
+
+  environment {
+    PY_IMAGE = "python:3.12-slim"
   }
 
   stages {
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
-    stage('Python - Lint & Format Check') {
+    stage('Lint & Format Check (containerized)') {
       steps {
         sh '''
-          python -V
-          pip -V
-          pip install -U pip
-          pip install ruff black
-          ruff check .
-          black --check .
+          docker run --rm \
+            -v "$WORKSPACE:/work" -w /work \
+            $PY_IMAGE \
+            bash -lc "pip install -U pip ruff black && ruff check . && black --check ."
         '''
       }
     }
 
-    stage ('Python - Tests') {
+    stage('Tests (containerized)') {
       steps {
         sh '''
-          pip install -U pytest httpx fastapi "uvicorn[standard]"
-          pytest
+          docker run --rm \
+            -v "$WORKSPACE:/work" -w /work \
+            $PY_IMAGE \
+            bash -lc "pip install -U pip pytest httpx fastapi 'uvicorn[standard]' && pytest"
         '''
       }
     }
 
-    stage ('Docker - Build Image') {
+    stage('Docker - Build Image') {
       steps {
         sh '''
           GIT_SHA=$(git rev-parse --short HEAD)
-          docker build -t fastapi-demo:${GIT_SHA}
+          docker build -t fastapi-demo:${GIT_SHA} .
         '''
       }
     }
-  }  
+  }
 }
