@@ -1,15 +1,20 @@
 pipeline {
   agent any
 
-  options { timestamps() }
+  options {
+    timestamps()
+  }
 
   environment {
     PY_IMAGE = "python:3.12-slim"
+    TRIVY_IMAGE = "aquasec/trivy:latest"
   }
 
   stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
 
     stage('Lint & Format Check (containerized)') {
@@ -18,7 +23,7 @@ pipeline {
           docker run --rm \
             --volumes-from jenkins \
             -w "$WORKSPACE" \
-            python:3.12-slim \
+            $PY_IMAGE \
             sh -lc "pip install -U pip ruff black && ruff check . && black --check ."
         '''
       }
@@ -30,20 +35,62 @@ pipeline {
           docker run --rm \
             --volumes-from jenkins \
             -w "$WORKSPACE" \
-            python:3.12-slim \
+            $PY_IMAGE \
             sh -lc "pip install -U pip pytest httpx fastapi 'uvicorn[standard]' && pytest"
         '''
       }
     }
 
-
     stage('Docker - Build Image') {
       steps {
         sh '''
-          GIT_SHA=$(git rev-parse --short HEAD)
-          docker build -t fastapi-demo:${GIT_SHA} .
           export DOCKER_BUILDKIT=1
+          GIT_SHA=$(git rev-parse --short HEAD)
+          echo "$GIT_SHA" > .git_sha
+          docker build -t fastapi-demo:${GIT_SHA} .
         '''
+      }
+    }
+
+    stage('Security - Python Dependency Audit (pip-audit)') {
+      steps {
+        sh '''
+          mkdir -p reports
+          GIT_SHA=$(cat .git_sha)
+
+          docker run --rm \
+            --volumes-from jenkins \
+            -w "$WORKSPACE" \
+            $PY_IMAGE \
+            sh -lc "pip install -U pip pip-audit && pip-audit -r requirements.txt -f json > reports/pip-audit-${GIT_SHA}.json"
+        '''
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'reports/pip-audit-*.json', fingerprint: true
+        }
+      }
+    }
+
+    stage('Security - Container Image Scan (trivy)') {
+      steps {
+        sh '''
+          mkdir -p reports
+          GIT_SHA=$(cat .git_sha)
+
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$WORKSPACE/reports:/reports" \
+            $TRIVY_IMAGE \
+            image --scanners vuln \
+            --format sarif --output /reports/trivy-${GIT_SHA}.sarif \
+            fastapi-demo:${GIT_SHA}
+        '''
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'reports/trivy-*.sarif', fingerprint: true
+        }
       }
     }
   }
