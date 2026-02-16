@@ -44,13 +44,13 @@ pipeline {
     stage('Docker - Build Image') {
       steps {
         sh '''
-          export DOCKER_BUILDKIT=1
           GIT_SHA=$(git rev-parse --short HEAD)
           echo "$GIT_SHA" > .git_sha
           docker build -t fastapi-demo:${GIT_SHA} .
         '''
       }
     }
+
 
     stage('Security - Python Dependency Audit (pip-audit)') {
       steps {
