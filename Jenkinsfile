@@ -17,6 +17,30 @@ pipeline {
       }
     }
 
+    stage('Security - Secret Scan (gitleaks)') {
+      steps {
+        sh '''
+        mkdir -p reports
+        GIT_SHA=$(cat .git_sha 2>/dev/null || git rev-parse --short HEAD)
+
+        docker run --rm \
+            --volumes-from jenkins \
+            -w "$WORKSPACE" \
+            zricethezav/gitleaks:latest \
+            detect --source . \
+            --report-format sarif \
+            --report-path reports/gitleaks-${GIT_SHA}.sarif \
+            --exit-code 1
+        '''
+      }
+      post {
+        always {
+        archiveArtifacts artifacts: 'reports/gitleaks-*.sarif', fingerprint: true
+        }
+      }
+    }
+
+
     stage('Lint & Format Check (containerized)') {
       steps {
         sh '''
