@@ -109,7 +109,7 @@ pipeline {
             aquasec/trivy:latest \
             image \
             --scanners vuln \
-            --vuln-tpe os, library \
+            --vuln-type os, library \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
             --exit-code 1 \
