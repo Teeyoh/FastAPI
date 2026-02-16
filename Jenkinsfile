@@ -111,6 +111,9 @@ pipeline {
             --scanners vuln \
             --vuln-tpe os, library \
             --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --cache-dir .trivycache \
             --format sarif --output reports/trivy-${GIT_SHA}.sarif \
             fastapi-demo:${GIT_SHA}
 
