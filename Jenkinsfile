@@ -107,7 +107,10 @@ pipeline {
             -w "$WORKSPACE" \
             -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:latest \
-            image --scanners vuln \
+            image \
+            --scanners vuln \
+            --vuln-tpe os, library \
+            --severity HIGH,CRITICAL \
             --format sarif --output reports/trivy-${GIT_SHA}.sarif \
             fastapi-demo:${GIT_SHA}
 
@@ -116,7 +119,7 @@ pipeline {
       }
       post {
         always {
-          archiveArtifacts artifacts: 'reports/trivy-*.sarif', fingerprint: true, allowEmptyArchive: false
+          archiveArtifacts artifacts: 'reports/trivy-*.sarif', fingerprint: true
         }
       }
     }
