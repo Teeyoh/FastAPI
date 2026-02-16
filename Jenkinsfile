@@ -79,17 +79,20 @@ pipeline {
           GIT_SHA=$(cat .git_sha)
 
           docker run --rm \
+            --volumes-from jenkins \
+            -w "$WORKSPACE" \
             -v /var/run/docker.sock:/var/run/docker.sock \
-            -v "$WORKSPACE/reports:/reports" \
-            $TRIVY_IMAGE \
+            aquasec/trivy:latest \
             image --scanners vuln \
-            --format sarif --output /reports/trivy-${GIT_SHA}.sarif \
+            --format sarif --output reports/trivy-${GIT_SHA}.sarif \
             fastapi-demo:${GIT_SHA}
+
+          ls -la reports
         '''
       }
       post {
         always {
-          archiveArtifacts artifacts: 'reports/trivy-*.sarif', fingerprint: true
+          archiveArtifacts artifacts: 'reports/trivy-*.sarif', fingerprint: true, allowEmptyArchive: false
         }
       }
     }
