@@ -68,9 +68,11 @@ pipeline {
     stage('Docker - Build Image') {
       steps {
         sh '''
+          set -euo pipefail
           GIT_SHA=$(git rev-parse --short HEAD)
           echo "$GIT_SHA" > .git_sha
-          docker build -t fastapi-demo:${GIT_SHA} .
+          docker buildx build --load -t fastapi-demo:${GIT_SHA} .
+          docker images | grep fastapi-demo | head -n 5
         '''
       }
     }

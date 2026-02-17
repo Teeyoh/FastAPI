@@ -2,7 +2,6 @@ FROM jenkins/jenkins:lts-jdk17
 
 USER root
 
-# Install docker CLI (client) + basics
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl gnupg lsb-release git \
   && install -m 0755 -d /etc/apt/keyrings \
@@ -15,6 +14,5 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
-# Allow the jenkins user to run docker (group id will be adjusted at runtime if needed)
-# We'll handle permissions with the socket; on Docker Desktop this often "just works".
-USER root
+# Return to the default Jenkins user
+USER jenkins
