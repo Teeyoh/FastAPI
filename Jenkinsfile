@@ -124,7 +124,7 @@ pipeline {
       }
       post {
         always {
-          archiveArtifacts artifacts: 'reports/trivy-*.sarif', fingerprint: true
+          archiveArtifacts artifacts: 'reports/trivy-*.sarif', fingerprint: true, allowEmptyArchive: true
         }
       }
     }
