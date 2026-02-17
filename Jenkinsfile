@@ -99,7 +99,8 @@ pipeline {
     stage('Security - Container Image Scan (trivy)') {
       steps {
         sh '''
-          mkdir -p reports
+          set -euo pipefail
+          mkdir -p reports .trivycache
           GIT_SHA=$(cat .git_sha)
 
           docker run --rm \
@@ -114,8 +115,9 @@ pipeline {
             --ignore-unfixed \
             --exit-code 1 \
             --cache-dir .trivycache \
-            --format sarif --output reports/trivy-${GIT_SHA}.sarif \
-            fastapi-demo:${GIT_SHA}
+            --format sarif \
+            --output "reports/trivy-${GIT_SHA}.sarif" \
+            "fastapi-demo:${GIT_SHA}"
 
           ls -la reports
         '''
