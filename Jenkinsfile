@@ -131,6 +131,7 @@ pipeline {
     }
     
     stage('Publish - Push Image to GHCR') {
+      sh 'echo "BRANCH_NAME=$BRANCH_NAME GIT_BRANCH=$GIT_BRANCH"'
       when {
         branch 'main'
       }
