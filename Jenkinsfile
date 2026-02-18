@@ -183,7 +183,7 @@ pipeline {
               -e GH_REPO="$GH_REPO" \
               python:3.12-slim bash -lc '
                 set -euo pipefail
-                pip -q install pyjwt cryptography >/dev/null
+                pip -q install pyjwt cryptography httpx >/dev/null
                 python ci/get_gh_app_token.py
               ')
 
