@@ -65,6 +65,26 @@ pipeline {
       }
     }
 
+    stage('Security - Python Dependency Audit (pip-audit)') {
+      steps {
+        sh '''
+          mkdir -p reports
+          GIT_SHA=$(cat .git_sha)
+
+          docker run --rm \
+            --volumes-from jenkins \
+            -w "$WORKSPACE" \
+            $PY_IMAGE \
+            sh -lc "pip install -U pip pip-audit && pip-audit -r requirements.txt -f json > reports/pip-audit-${GIT_SHA}.json"
+        '''
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'reports/pip-audit-*.json', fingerprint: true
+        }
+      }
+    }
+
     stage('Docker - Build Image') {
       steps {
         sh '''
@@ -98,27 +118,6 @@ pipeline {
       post {
         always {
         archiveArtifacts artifacts: 'reports/sbom-*.cdx.json', fingerprint: true
-        }
-      }
-    }
-
-
-    stage('Security - Python Dependency Audit (pip-audit)') {
-      steps {
-        sh '''
-          mkdir -p reports
-          GIT_SHA=$(cat .git_sha)
-
-          docker run --rm \
-            --volumes-from jenkins \
-            -w "$WORKSPACE" \
-            $PY_IMAGE \
-            sh -lc "pip install -U pip pip-audit && pip-audit -r requirements.txt -f json > reports/pip-audit-${GIT_SHA}.json"
-        '''
-      }
-      post {
-        always {
-          archiveArtifacts artifacts: 'reports/pip-audit-*.json', fingerprint: true
         }
       }
     }
