@@ -77,6 +77,32 @@ pipeline {
       }
     }
 
+    stage('Supply Chain - Generate SBOM (syft)') {
+      steps {
+        sh '''
+        set -euo pipefail
+        mkdir -p reports
+        GIT_SHA=$(cat .git_sha)
+
+        # Generate SBOM for the built image
+        docker run --rm \
+            --volumes-from jenkins \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            anchore/syft:v1.10.0 \
+            fastapi-demo:${GIT_SHA} \
+            -o cyclonedx-json > reports/sbom-${GIT_SHA}.cdx.json
+
+        ls -la reports | grep sbom || true
+        '''
+      }
+      post {
+        always {
+        archiveArtifacts artifacts: 'reports/sbom-*.cdx.json', fingerprint: true
+        }
+      }
+    }
+
+
     stage('Security - Python Dependency Audit (pip-audit)') {
       steps {
         sh '''
