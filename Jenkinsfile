@@ -160,10 +160,10 @@ pipeline {
         expression { env.GIT_BRANCH == 'origin/main' }
       }
       environment {
-        REGISTRY  = 'ghcr.io'
+        REGISTRY   = 'ghcr.io'
         IMAGE_REPO = 'ghcr.io/teeyoh/fastapi'
-        GH_OWNER = 'Teeyoh'
-        GH_REPO  = 'FastAPI'
+        GH_OWNER   = 'Teeyoh'
+        GH_REPO    = 'FastAPI'
       }
       steps {
         withCredentials([
@@ -174,7 +174,6 @@ pipeline {
             set -euo pipefail
             GIT_SHA=$(cat .git_sha)
 
-            # Mint a short-lived GitHub App installation token, then use it for GHCR login
             GH_TOKEN=$(docker run --rm \
               --volumes-from jenkins \
               -v /var/run/docker.sock:/var/run/docker.sock \
@@ -183,41 +182,43 @@ pipeline {
               -e GH_APP_KEYFILE="$GH_APP_KEYFILE" \
               -e GH_OWNER="$GH_OWNER" \
               -e GH_REPO="$GH_REPO" \
-              python:3.12-slim bash -lc '
-                set -euo pipefail
-                pip -q install pyjwt cryptography >/dev/null
-
-                python - << "PY"
+              python:3.12-slim bash -lc "set -euo pipefail
+    pip -q install pyjwt cryptography >/dev/null
+    cat > /tmp/gh_app_token.py <<'PY'
     import os, time, json, subprocess
     import jwt
 
-    app_id = os.environ["GH_APP_ID"]
-    key_path = os.environ["GH_APP_KEYFILE"]
-    owner = os.environ["GH_OWNER"]
-    repo  = os.environ["GH_REPO"]
+    app_id = os.environ['GH_APP_ID']
+    key_path = os.environ['GH_APP_KEYFILE']
+    owner = os.environ['GH_OWNER']
+    repo  = os.environ['GH_REPO']
 
-    with open(key_path, "rb") as f:
+    with open(key_path, 'rb') as f:
         private_key = f.read()
 
     now = int(time.time())
-    payload = {"iat": now - 30, "exp": now + 9*60, "iss": app_id}
-    app_jwt = jwt.encode(payload, private_key, algorithm="RS256")
+    payload = {'iat': now - 30, 'exp': now + 9*60, 'iss': app_id}
+    app_jwt = jwt.encode(payload, private_key, algorithm='RS256')
 
-    headers = ["-H", f"Authorization: Bearer {app_jwt}", "-H", "Accept: application/vnd.github+json"]
+    headers = [
+        '-H', f'Authorization: Bearer {app_jwt}',
+        '-H', 'Accept: application/vnd.github+json',
+    ]
 
     def curl_json(cmd):
         out = subprocess.check_output(cmd)
-        return json.loads(out.decode("utf-8"))
+        return json.loads(out.decode('utf-8'))
 
-    # Find installation for this repo
-    inst = curl_json(["curl", "-sS"] + headers + [f"https://api.github.com/repos/{owner}/{repo}/installation"])
-    inst_id = inst["id"]
+    inst = curl_json(['curl', '-sS'] + headers + [f'https://api.github.com/repos/{owner}/{repo}/installation'])
+    inst_id = inst['id']
 
-    # Create a short-lived installation token
-    tok = curl_json(["curl", "-sS", "-X", "POST"] + headers + [f"https://api.github.com/app/installations/{inst_id}/access_tokens"])
-    print(tok["token"])
+    tok = curl_json(['curl', '-sS', '-X', 'POST'] + headers + [f'https://api.github.com/app/installations/{inst_id}/access_tokens'])
+    print(tok['token'])
     PY
-            ')
+    python /tmp/gh_app_token.py")
+
+            # Sanity check token non-empty (won't print token)
+            test -n "$GH_TOKEN"
 
             echo "$GH_TOKEN" | docker login "$REGISTRY" -u teeyoh --password-stdin
 
@@ -228,7 +229,7 @@ pipeline {
             docker push "${IMAGE_REPO}:main"
 
             docker logout "$REGISTRY"
-        '''
+          '''
         }
       }
     }
