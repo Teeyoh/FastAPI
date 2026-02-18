@@ -176,48 +176,17 @@ pipeline {
 
             GH_TOKEN=$(docker run --rm \
               --volumes-from jenkins \
-              -v /var/run/docker.sock:/var/run/docker.sock \
               -w /var/jenkins_home/workspace/fastapi-cicd \
               -e GH_APP_ID="$GH_APP_ID" \
               -e GH_APP_KEYFILE="$GH_APP_KEYFILE" \
               -e GH_OWNER="$GH_OWNER" \
               -e GH_REPO="$GH_REPO" \
-              python:3.12-slim bash -lc "set -euo pipefail
-    pip -q install pyjwt cryptography >/dev/null
-    cat > /tmp/gh_app_token.py <<'PY'
-    import os, time, json, subprocess
-    import jwt
+              python:3.12-slim bash -lc '
+                set -euo pipefail
+                pip -q install pyjwt cryptography >/dev/null
+                python ci/get_gh_app_token.py
+              ')
 
-    app_id = os.environ['GH_APP_ID']
-    key_path = os.environ['GH_APP_KEYFILE']
-    owner = os.environ['GH_OWNER']
-    repo  = os.environ['GH_REPO']
-
-    with open(key_path, 'rb') as f:
-        private_key = f.read()
-
-    now = int(time.time())
-    payload = {'iat': now - 30, 'exp': now + 9*60, 'iss': app_id}
-    app_jwt = jwt.encode(payload, private_key, algorithm='RS256')
-
-    headers = [
-        '-H', f'Authorization: Bearer {app_jwt}',
-        '-H', 'Accept: application/vnd.github+json',
-    ]
-
-    def curl_json(cmd):
-        out = subprocess.check_output(cmd)
-        return json.loads(out.decode('utf-8'))
-
-    inst = curl_json(['curl', '-sS'] + headers + [f'https://api.github.com/repos/{owner}/{repo}/installation'])
-    inst_id = inst['id']
-
-    tok = curl_json(['curl', '-sS', '-X', 'POST'] + headers + [f'https://api.github.com/app/installations/{inst_id}/access_tokens'])
-    print(tok['token'])
-    PY
-    python /tmp/gh_app_token.py")
-
-            # Sanity check token non-empty (won't print token)
             test -n "$GH_TOKEN"
 
             echo "$GH_TOKEN" | docker login "$REGISTRY" -u teeyoh --password-stdin
