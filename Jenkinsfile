@@ -131,29 +131,23 @@ pipeline {
     }
     
     stage('Publish - Push Image to GHCR') {
-      sh 'echo "BRANCH_NAME=$BRANCH_NAME GIT_BRANCH=$GIT_BRANCH"'
-      when {
-        branch 'main'
-      }
-      environment {
-        REGISTRY = 'ghcr.io'
-        IMAGE_REPO = 'ghcr.io/teeyoh/fastapi'
-      }
       steps {
+        sh 'echo "BRANCH_NAME=$BRANCH_NAME GIT_BRANCH=$GIT_BRANCH"'
+
         withCredentials([usernamePassword(credentialsId: 'ghcr-creds', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
           sh '''
             set -euo pipefail
+
             GIT_SHA=$(cat .git_sha)
+            IMAGE_REPO=ghcr.io/teeyoh/fastapi
 
-            echo "$GH_TOKEN" | docker login "$REGISTRY" -u "$GH_USER" --password-stdin
+            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_USER" --password-stdin
 
-            docker tag "fastapi-demo:${GIT_SHA}" "${IMAGE_REPO}:${GIT_SHA}"
-            docker tag "fastapi-demo:${GIT_SHA}" "${IMAGE_REPO}:main"
+            docker tag fastapi-demo:$GIT_SHA $IMAGE_REPO:$GIT_SHA
+            docker tag fastapi-demo:$GIT_SHA $IMAGE_REPO:main
 
-            docker push "${IMAGE_REPO}:${GIT_SHA}"
-            docker push "${IMAGE_REPO}:main"
-
-            docker logout "$REGISTRY"
+            docker push $IMAGE_REPO:$GIT_SHA
+            docker push $IMAGE_REPO:main
           '''
         }
       }
