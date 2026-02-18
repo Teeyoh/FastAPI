@@ -77,7 +77,6 @@ pipeline {
       }
     }
 
-
     stage('Security - Python Dependency Audit (pip-audit)') {
       steps {
         sh '''
@@ -127,6 +126,34 @@ pipeline {
       post {
         always {
           archiveArtifacts artifacts: 'reports/trivy-*.sarif', fingerprint: true, allowEmptyArchive: true
+        }
+      }
+    }
+    
+    stage('Publish - Push Image to GHCR') {
+      when {
+        branch 'main'
+      }
+      environment {
+        REGISTRY = 'ghcr.io'
+        IMAGE_REPO = 'ghcr.io/teeyoh/fastapi'
+      }
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'ghcr-creds', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
+          sh '''
+            set -euo pipefail
+            GIT_SHA=$(cat .git_sha)
+
+            echo "$GH_TOKEN" | docker login "$REGISTRY" -u "$GH_USER" --password-stdin
+
+            docker tag "fastapi-demo:${GIT_SHA}" "${IMAGE_REPO}:${GIT_SHA}"
+            docker tag "fastapi-demo:${GIT_SHA}" "${IMAGE_REPO}:main"
+
+            docker push "${IMAGE_REPO}:${GIT_SHA}"
+            docker push "${IMAGE_REPO}:main"
+
+            docker logout "$REGISTRY"
+          '''
         }
       }
     }
