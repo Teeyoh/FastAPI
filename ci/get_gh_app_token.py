@@ -3,7 +3,7 @@ import os
 import time
 import subprocess
 
-import jwt  # pyjwt
+import jwt
 
 app_id = os.environ["GH_APP_ID"]
 key_path = os.environ["GH_APP_KEYFILE"]
@@ -30,11 +30,15 @@ def curl_json(cmd: list[str]) -> dict:
     return json.loads(out.decode("utf-8"))
 
 
-inst = curl_json(["curl", "-sS"] + headers + [f"https://api.github.com/repos/{owner}/{repo}/installation"])
+inst = curl_json(
+    ["curl", "-sS"] + headers + [f"https://api.github.com/repos/{owner}/{repo}/installation"]
+)
 inst_id = inst["id"]
 
 tok = curl_json(
-    ["curl", "-sS", "-X", "POST"] + headers + [f"https://api.github.com/app/installations/{inst_id}/access_tokens"]
+    ["curl", "-sS", "-X", "POST"]
+    + headers
+    + [f"https://api.github.com/app/installations/{inst_id}/access_tokens"]
 )
 
 print(tok["token"])
