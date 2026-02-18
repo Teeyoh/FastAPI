@@ -131,9 +131,16 @@ pipeline {
     }
     
     stage('Publish - Push Image to GHCR') {
-      steps {
-        sh 'echo "BRANCH_NAME=$BRANCH_NAME GIT_BRANCH=$GIT_BRANCH"'
+      when {
+        expression { (env.GIT_BRANCH ?: '') in ['origin/main', 'main'] || (env.BRANCH_NAME ?: '') == 'main' }
+      }
 
+      environment {
+        REGISTRY = 'ghcr.io'
+        IMAGE_REPO = 'ghcr.io/teeyoh/fastapi'
+      }
+
+      steps {
         withCredentials([usernamePassword(credentialsId: 'ghcr-creds', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
           sh '''
             set -euo pipefail
