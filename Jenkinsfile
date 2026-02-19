@@ -173,7 +173,8 @@ pipeline {
           sh '''
             set -euo pipefail
             GIT_SHA=$(cat .git_sha)
-
+            
+            set +x
             GH_TOKEN=$(docker run --rm \
               --volumes-from jenkins \
               -w /var/jenkins_home/workspace/fastapi-cicd \
@@ -189,7 +190,7 @@ pipeline {
 
             test -n "$GH_TOKEN"
             
-            set +x
+
             printf "%s" "$GH_TOKEN" | docker login ghcr.io -u x-access-token --password-stdin
             set -x
 
@@ -201,7 +202,8 @@ pipeline {
             docker push "ghcr.io/teeyoh/fastapi:main"
 
             set +x
-            docker logout ghcr.io
+            docker logout ghcr.io || true
+            rm -rf "$DOCKER_CONFIG"
             set -x
           '''
         }
