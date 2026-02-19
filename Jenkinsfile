@@ -188,16 +188,21 @@ pipeline {
               ')
 
             test -n "$GH_TOKEN"
+            
+            set +x
+            printf "%s" "$GH_TOKEN" | docker login ghcr.io -u x-access-token --password-stdin
+            set -x
 
-            echo "$GH_TOKEN" | docker login "$REGISTRY" -u teeyoh --password-stdin
 
-            docker tag "fastapi-demo:${GIT_SHA}" "${IMAGE_REPO}:${GIT_SHA}"
-            docker tag "fastapi-demo:${GIT_SHA}" "${IMAGE_REPO}:main"
+            docker tag "fastapi-demo:${GIT_SHA}" "ghcr.io/teeyoh/fastapi:${GIT_SHA}"
+            docker tag "fastapi-demo:${GIT_SHA}" "ghcr.io/teeyoh/fastapi:main"
 
-            docker push "${IMAGE_REPO}:${GIT_SHA}"
-            docker push "${IMAGE_REPO}:main"
+            docker push "ghcr.io/teeyoh/fastapi:${GIT_SHA}"
+            docker push "ghcr.io/teeyoh/fastapi:main"
 
-            docker logout "$REGISTRY"
+            set +x
+            docker logout ghcr.io
+            set -x
           '''
         }
       }
